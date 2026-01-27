@@ -41,7 +41,7 @@ This plugin protects guest ticket submissions (open.php and help-topic forms) us
 
 4. Log in to the osTicket Admin Panel
 5. Go to Admin → Plugins
-6. Enable Google reCAPTCHA v3 (Guest Ticket Submit)
+6. Enable reCAPTCHA v3 (Field)
 
 ---
 
@@ -49,7 +49,10 @@ This plugin protects guest ticket submissions (open.php and help-topic forms) us
 
 Navigate to:
 
-Admin → Plugins → Google reCAPTCHA v3
+Admin → Plugins → reCAPTCHA v3 (Field)
+This plugin registers a custom form field type. Enforcement occurs when the
+field is present and required on a form.
+
 
 ### Required Settings
 
