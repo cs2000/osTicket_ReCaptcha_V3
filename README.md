@@ -43,6 +43,7 @@ This plugin protects guest ticket submissions (open.php and help-topic forms) us
 5. Go to Admin → Plugins
 6. Enable reCAPTCHA v3 (Field)
 
+
 ---
 
 ## Configuration
@@ -50,9 +51,13 @@ This plugin protects guest ticket submissions (open.php and help-topic forms) us
 Navigate to:
 
 Admin → Plugins → reCAPTCHA v3 (Field)
+
+1. Add an Instance
+2. Add in your reCAPTCHA v3 Site Key and Secret Key from https://www.google.com/recaptcha/admin/create
+3. Configure any additional options as needed
+
 This plugin registers a custom form field type. Enforcement occurs when the
 field is present and required on a form.
-
 
 ### Required Settings
 
@@ -75,6 +80,7 @@ field is present and required on a form.
 3. Add a new field:
    - Type: Google reCAPTCHA v3
    - Required: Yes
+   - Label & Variable can be set as whatever you like. NOTE: Label is visible to end users.
 4. Save the form
 
 The field renders invisibly but is enforced during submission.
@@ -94,7 +100,6 @@ If these domains are blocked, reCAPTCHA will not load.
 
 ## How It Works
 
-- Uses a v2-style widget render approach (inline HTML and inline JavaScript)
 - Dynamically loads Google’s reCAPTCHA v3 API
 - Generates a fresh token on every submission
 - Injects the token into:
@@ -120,7 +125,7 @@ Example entries:
 [recaptchav3] GATE: open.php POST detected. token_len=1849  
 [recaptchav3] GATE: verify response={"success":true,"score":0.9,"action":"ticket_submit"}
 
-Debug logging is disabled by default and should not be left enabled permanently.
+Debug logging is disabled by default and should not be left enabled permanently as logs are not pruned.
 
 ---
 
