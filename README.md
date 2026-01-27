@@ -13,7 +13,7 @@ This plugin protects guest ticket submissions (open.php and help-topic forms) us
 - Proper PHAR plugin (drop-in installation)
 - Admin-configurable keys and thresholds
 - Mandatory server-side validation (cannot be bypassed)
-- Compatible with PHP 8.1 – 8.4
+- Tested with PHP 8.1 – 8.4
 - CSP-aware (documents required allowlists)
 - Optional debug logging
 
