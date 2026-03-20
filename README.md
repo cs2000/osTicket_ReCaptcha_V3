@@ -89,12 +89,15 @@ The field renders invisibly but is enforced during submission.
 
 ## Content Security Policy (CSP)
 
-Your Content Security Policy must allow the following domains:
+Due to CSRF blocking the recaptcha script from running, you need to make one tiny edit to OSTicket files before the system will work
 
-script-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/
-connect-src https://www.google.com/recaptcha/
+sudo nano nano /var/www/osTicket/upload/include/client/header.inc.php
 
-If these domains are blocked, reCAPTCHA will not load.
+Add a comment to this line (line number 9) to disable it
+header("Content-Security-Policy: frame-ancestors ".$cfg->getAllowIframes()."; script-src 'self' 'unsafe-inline'; object-src 'none'");
+
+Add this line just below it.
+header("Content-Security-Policy: frame-ancestors ".$cfg->getAllowIframes()."; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com; frame-src https://www.google.com; object-src 'none'");
 
 ---
 
