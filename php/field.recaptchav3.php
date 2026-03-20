@@ -98,7 +98,7 @@ class RecaptchaV3Widget extends Widget
                     var tries = 0;
                     (function wait(){
                         if (window.grecaptcha && typeof window.grecaptcha.ready === 'function') return cb();
-                        if (++tries > 80) return cb(new Error('grecaptcha not ready'));
+                        if (++tries > 80) return cb(new Error('grecaptcha not ready after 8s'));
                         setTimeout(wait, 100);
                     })();
                     return;
@@ -116,58 +116,102 @@ class RecaptchaV3Widget extends Widget
                 log('[recaptchav3] injected Google loader');
             }
 
-            var anchor = document.getElementById(<?php echo json_encode($anchorId); ?>);
-            if (!anchor) return;
+            // ---------------------------------------------------------------
+            // Robust form detection: anchor.closest('form') can return null
+            // when osTicket renders the field outside the <form> tag (seen
+            // after osTicket updates). Fall back to known osTicket form IDs
+            // and finally to the first form on the page.
+            // ---------------------------------------------------------------
+            function findForm(anchor) {
+                var form = anchor.closest('form');
+                if (form) { log('[recaptchav3] found form via closest()'); return form; }
 
-            var form = anchor.closest('form');
-            if (!form) return;
+                // osTicket open.php known form IDs / selectors
+                var candidates = [
+                    'form#new-ticket',
+                    'form[action*="open.php"]',
+                    'form[name="ticket"]',
+                    'form'
+                ];
+                for (var i = 0; i < candidates.length; i++) {
+                    form = document.querySelector(candidates[i]);
+                    if (form) { log('[recaptchav3] found form via selector:', candidates[i]); return form; }
+                }
 
-            // Bind only once per form
-            if (form.__rcv3_bound) return;
-            form.__rcv3_bound = true;
+                return null;
+            }
 
-            var tokenInput = ensureHidden(form, 'g-recaptcha-response');
-            var fieldInput = ensureHidden(form, fieldName);
+            function init() {
+                var anchor = document.getElementById(<?php echo json_encode($anchorId); ?>);
+                if (!anchor) { log('[recaptchav3] anchor not found'); return; }
 
-            form.addEventListener('submit', function(e){
-                // Re-entrancy guard FIRST
-                if (form.__rcv3_submitting) return;
+                var form = findForm(anchor);
+                if (!form) { log('[recaptchav3] could not find parent form — giving up'); return; }
 
-                // Intercept to fetch a fresh token every time
-                e.preventDefault();
-                form.__rcv3_submitting = true;
+                // Bind only once per form
+                if (form.__rcv3_bound) { log('[recaptchav3] form already bound'); return; }
+                form.__rcv3_bound = true;
 
-                // Force a new token for every submit attempt (prevents timeout-or-duplicate on retries)
-                tokenInput.value = '';
-                fieldInput.value = '';
+                // Move hidden inputs into the form if the anchor was outside it
+                var tokenInput = ensureHidden(form, 'g-recaptcha-response');
+                var fieldInput = ensureHidden(form, fieldName);
 
-                loadGoogle(function(err){
-                    if (err) {
-                        log('[recaptchav3] loader error, submitting without token', err);
-                        form.__rcv3_submitting = false;
-                        form.submit();
-                        return;
-                    }
+                form.addEventListener('submit', function(e){
+                    // Re-entrancy guard FIRST
+                    if (form.__rcv3_submitting) return;
 
-                    window.grecaptcha.ready(function(){
-                        window.grecaptcha.execute(siteKey, {action: action}).then(function(token){
-                            token = token || '';
-                            tokenInput.value = token;
-                            fieldInput.value = token;
-                            log('[recaptchav3] token set len=', token.length);
+                    // Intercept to fetch a fresh token every time
+                    e.preventDefault();
+                    form.__rcv3_submitting = true;
 
+                    // Clear stale token on every attempt
+                    tokenInput.value = '';
+                    fieldInput.value = '';
+
+                    loadGoogle(function(err){
+                        if (err) {
+                            // FAIL CLOSED: do not submit without a token
+                            log('[recaptchav3] loader error', err);
                             form.__rcv3_submitting = false;
-                            form.submit();
-                        }).catch(function(ex){
-                            log('[recaptchav3] execute failed, submitting without token', ex);
-                            form.__rcv3_submitting = false;
-                            form.submit();
+                            alert('reCAPTCHA could not be loaded. Please check your internet connection and try again.');
+                            return;
+                        }
+
+                        window.grecaptcha.ready(function(){
+                            window.grecaptcha.execute(siteKey, {action: action}).then(function(token){
+                                token = token || '';
+                                if (!token) {
+                                    // FAIL CLOSED: empty token from Google
+                                    log('[recaptchav3] execute returned empty token');
+                                    form.__rcv3_submitting = false;
+                                    alert('reCAPTCHA verification failed. Please reload the page and try again.');
+                                    return;
+                                }
+                                tokenInput.value = token;
+                                fieldInput.value = token;
+                                log('[recaptchav3] token set len=', token.length);
+
+                                form.__rcv3_submitting = false;
+                                form.submit();
+                            }).catch(function(ex){
+                                // FAIL CLOSED: execute() rejected
+                                log('[recaptchav3] execute failed', ex);
+                                form.__rcv3_submitting = false;
+                                alert('reCAPTCHA verification failed. Please reload the page and try again.');
+                            });
                         });
                     });
-                });
-            }, true);
+                }, true);
 
-            log('[recaptchav3] bound form submit handler');
+                log('[recaptchav3] bound form submit handler');
+            }
+
+            // Run after DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
         })();
         </script>
         <?php
