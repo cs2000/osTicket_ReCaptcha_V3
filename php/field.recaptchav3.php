@@ -15,7 +15,18 @@ class RecaptchaV3Field extends TextboxField
     static $type   = 'recaptchav3';
     static $widget = 'RecaptchaV3Widget';
 
-    // Make osTicket treat the token as the field value too (helps required/clean paths)
+    // Verification tokens are transient, not ticket answers. Do not persist them.
+    // Server-side verification is enforced by GoogleRecaptchaV3::bootstrap().
+    function hasData() {
+        return false;
+    }
+
+    // Hide tokens already stored by earlier plugin versions.
+    function display($value) {
+        return '';
+    }
+
+    // Keep the submitted token available for verification during this request.
     function getClean($validate = true) {
         $k = $this->getFormName();
         $v = $_POST[$k] ?? ($_POST['g-recaptcha-response'] ?? '');
